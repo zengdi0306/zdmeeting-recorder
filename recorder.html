@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会议录音转录助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .main {
+            padding: 30px;
+        }
+        
+        .control-panel {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .status-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .status-item {
+            text-align: center;
+        }
+        
+        .status-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .recording .status-value {
+            color: #f5576c;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .transcript-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .transcript-panel h3 {
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .transcript-content {
+            line-height: 1.8;
+            color: #444;
+            font-size: 15px;
+        }
+        
+        .interim {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .final {
+            color: #333;
+        }
+        
+        .timestamp {
+            color: #667eea;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        
+        .audio-player {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            display: none;
+        }
+        
+        .audio-player.active {
+            display: block;
+        }
+        
+        .audio-player h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        audio {
+            width: 100%;
+            border-radius: 30px;
+        }
+        
+        .tips {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 10px;
+            border-left: 4px solid #ffc107;
+            font-size: 14px;
+            color: #856404;
+        }
+        
+        .tips ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .tips li {
+            margin-bottom: 5px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+        }
+        
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        .recording-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #f5576c;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        .confidence-bar {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ 会议录音转录助手</h1>
+            <p>实时录音 + 语音转文字 + 本地保存</p>
+        </div>
+        
+        <div class="main">
+            <div class="control-panel">
+                <button class="btn btn-primary" id="startBtn" onclick="startRecording()">
+                    <span>🔴</span> 开始录音
+                </button>
+                <button class="btn btn-danger" id="stopBtn" onclick="stopRecording()" disabled>
+                    <span>⏹️</span> 停止录音
+                </button>
+                <button class="btn btn-secondary" id="clearBtn" onclick="clearTranscript()">
+                    <span>🗑️</span> 清空内容
+                </button>
+                <button class="btn btn-secondary" id="saveBtn" onclick="saveAll()" disabled>
+                    <span>💾</span> 保存录音和文字
+                </button>
+            </div>
+            
+            <div class="status-panel" id="statusPanel">
+                <div class="status-item">
+                    <div class="status-label">录音状态</div>
+                    <div class="status-value" id="recordStatus">未开始</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">录音时长</div>
+                    <div class="status-value" id="recordTime">00:00</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">识别状态</div>
+                    <div class="status-value" id="transcriptStatus">待机</div>
+                </div>
+            </div>
+            
+            <div class="transcript-panel">
+                <h3>
+                    <span>📝</span> 实时转录内容
+                    <span id="currentConfidence" style="margin-left: auto; font-size: 12px; color: #666;"></span>
+                </h3>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="confidenceBar" style="width: 0%"></div>
+                </div>
+                <div class="transcript-content" id="transcript">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                        </svg>
+                        <p>点击"开始录音"开始会议记录</p>
+                        <p style="font-size: 12px; margin-top: 10px;">支持实时中文语音识别</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="audio-player" id="audioPlayer">
+                <h3>🎵 录音回放</h3>
+                <audio id="audioElement" controls></audio>
+            </div>
+            
+            <div class="tips">
+                <strong>💡 使用提示：</strong>
+                <ul>
+                    <li>请允许浏览器使用麦克风的权限</li>
+                    <li>建议在安静的会议室使用，识别准确率更高</li>
+                    <li>说话人与麦克风距离保持在1米内效果最佳</li>
+                    <li>录音和文字可以分别保存到本地</li>
+                    <li>长时间录音请注意浏览器不要关闭或刷新页面</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recognition = null;
+        let isRecording = false;
+        let recordStartTime = null;
+        let recordTimer = null;
+        let audioBlob = null;
+        let transcriptText = '';
+        
+        // 检查浏览器支持
+        function checkSupport() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('您的浏览器不支持录音功能，请使用 Chrome、Edge 或 Safari 最新版本');
+                return false;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('您的浏览器不支持语音识别，请使用 Chrome 或 Edge 浏览器');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 格式化时间
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // 更新时间显示
+        function updateTimer() {
+            if (!recordStartTime) return;
+            const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+            document.getElementById('recordTime').textContent = formatTime(elapsed);
+        }
+        
+        // 开始录音
+        async function startRecording() {
+            if (!checkSupport()) return;
+            
+            try {
+                // 获取麦克风权限
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // 初始化录音器
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audioElement = document.getElementById('audioElement');
+                    audioElement.src = audioUrl;
+                    document.getElementById('audioPlayer').classList.add('active');
+                    document.getElementById('saveBtn').disabled = false;
+                };
+                
+                // 开始录音
+                mediaRecorder.start(1000); // 每秒收集一次数据
+                
+                // 初始化语音识别
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                
+                recognition.onstart = () => {
+                    document.getElementById('transcriptStatus').textContent = '识别中...';
+                };
+                
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        const confidence = event.results[i][0].confidence;
+                        
+                        // 更新置信度条
+                        document.getElementById('confidenceBar').style.width = (confidence * 100) + '%';
+                        document.getElementById('currentConfidence').textContent = 
+                            `置信度: ${(confidence * 100).toFixed(1)}%`;
+                        
+                        if (event.results[i].isFinal) {
+                            const timestamp = new Date().toLocaleTimeString('zh-CN');
+                            finalTranscript += `<div class="final">
+                                <span class="timestamp">[${timestamp}]</span>
+                                ${transcript}
+                            </div>`;
+                            transcriptText += `[${timestamp}] ${transcript}\n`;
+                        } else {
+                            interimTranscript = transcript;
+                        }
+                    }
+                    
+                    const transcriptDiv = document.getElementById('transcript');
+                    
+                    // 如果是首次有内容，清空empty state
+                    if (transcriptDiv.querySelector('.empty-state')) {
+                        transcriptDiv.innerHTML = '';
+                    }
+                    
+                    // 添加最终识别结果
+                    if (finalTranscript) {
+                        transcriptDiv.innerHTML += finalTranscript;
+                    }
+                    
+                    // 更新临时识别结果
+                    let interimDiv = transcriptDiv.querySelector('.interim-line');
+                    if (!interimDiv) {
+                        interimDiv = document.createElement('div');
+                        interimDiv.className = 'interim interim-line';
+                        transcriptDiv.appendChild(interimDiv);
+                    }
+                    interimDiv.textContent = interimTranscript;
+                    
+                    // 自动滚动到底部
+                    transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('语音识别错误:', event.error);
+                    if (event.error === 'no-speech') {
+                        document.getElementById('transcriptStatus').textContent = '未检测到语音';
+                    } else if (event.error === 'audio-capture') {
+                        document.getElementById('transcriptStatus').textContent = '麦克风错误';
+                    } else if (event.error === 'not-allowed') {
+                        document.getElementById('transcriptStatus').textContent = '无权限';
+                        alert('请允许使用麦克风权限');
+                    } else {
+                        document.getElementById('transcriptStatus').textContent = '识别错误';
+                    }
+                };
+                
+                recognition.onend = () => {
+                    if (isRecording) {
+                        // 如果还在录音，重新开始识别
+                        recognition.start();
+                    } else {
+                        document.getElementById('transcriptStatus').textContent = '已停止';
+                    }
+                };
+                
+                recognition.start();
+                
+                // 更新UI状态
+                isRecording = true;
+                recordStartTime = Date.now();
+                recordTimer = setInterval(updateTimer, 1000);
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('saveBtn').disabled = true;
+                document.getElementById('recordStatus').innerHTML = '<span class="recording-indicator"></span>录音中';
+                document.getElementById('statusPanel').classList.add('recording');
+                document.getElementById('audioPlayer').classList.remove('active');
+                
+                // 清空之前的临时结果标记
+                const interimDiv = document.querySelector('.interim-line');
+                if (interimDiv) interimDiv.remove();
+                
+            } catch (error) {
+                console.error('启动录音失败:', error);
+                alert('启动录音失败，请检查麦克风权限：' + error.message);
+            }
+        }
+        
+        // 停止录音
+        function stopRecording() {
+            if (!isRecording) return;
+            
+            isRecording = false;
+            
+            // 停止录音
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                // 停止所有音轨
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+            
+            // 停止语音识别
+            if (recognition) {
+                recognition.stop();
+            }
+            
+            // 停止计时
+            if (recordTimer) {
+                clearInterval(recordTimer);
+                recordTimer = null;
+            }
+            
+            // 更新UI
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('recordStatus').textContent = '已停止';
+            document.getElementById('statusPanel').classList.remove('recording');
+            document.getElementById('transcriptStatus').textContent = '已完成';
+            document.getElementById('currentConfidence').textContent = '';
+            document.getElementById('confidenceBar').style.width = '0%';
+            
+            // 移除临时识别结果
+            const interimDiv = document.querySelector('.interim-line');
+            if (interimDiv) interimDiv.remove();
+        }
+        
+        // 清空转录内容
+        function clearTranscript() {
+            if (isRecording) {
+                alert('请先停止录音再清空内容');
+                return;
+            }
+            
+            if (transcriptText || audioBlob) {
+                if (!confirm('确定要清空所有内容吗？未保存的内容将丢失。')) {
+                    return;
+                }
+            }
+            
+            transcriptText = '';
+            audioBlob = null;
+            audioChunks = [];
+            
+            document.getElementById('transcript').innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                    <p>点击"开始录音"开始会议记录</p>
+                    <p style="font-size: 12px; margin-top: 10px;">支持实时中文语音识别</p>
+                </div>
+            `;
+            
+            document.getElementById('audioPlayer').classList.remove('active');
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('recordTime').textContent = '00:00';
+            document.getElementById('recordStatus').textContent = '未开始';
+            document.getElementById('transcriptStatus').textContent = '待机';
+        }
+        
+        // 保存录音和文字
+        function saveAll() {
+            if (!audioBlob && !transcriptText) {
+                alert('没有可保存的内容');
+                return;
+            }
+            
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            
+            // 保存录音文件
+            if (audioBlob) {
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audioLink = document.createElement('a');
+                audioLink.href = audioUrl;
+                audioLink.download = `会议录音_${timestamp}.wav`;
+                audioLink.click();
+                URL.revokeObjectURL(audioUrl);
+            }
+            
+            // 保存文字记录
+            if (transcriptText) {
+                const textBlob = new Blob([transcriptText], { type: 'text/plain;charset=utf-8' });
+                const textUrl = URL.createObjectURL(textBlob);
+                const textLink = document.createElement('a');
+                textLink.href = textUrl;
+                textLink.download = `会议记录_${timestamp}.txt`;
+                textLink.click();
+                URL.revokeObjectURL(textUrl);
+            }
+            
+            alert('文件已保存到下载文件夹！');
+        }
+        
+        // 页面加载时检查支持
+        window.onload = checkSupport;
+        
+        // 页面关闭前提醒
+        window.onbeforeunload = (e) => {
+            if (isRecording) {
+                e.preventDefault();
+                e.returnValue = '正在录音中，确定要离开吗？';
+            }
+        };
+    </script>
+</body>
+</html>
